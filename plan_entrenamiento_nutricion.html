@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan de Entrenamiento y Nutrición</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            padding-top: 60px; /* Reducido de 70px */
+        }
+        
+        /* MENÚ FIJO - MÁS COMPACTO */
+        .menu-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #2d2d2d;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            border-bottom: 2px solid #4a9eff;
+            padding: 5px 0; /* Reducido el padding vertical */
+        }
+        
+        .menu-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px; /* Reducido padding horizontal */
+        }
+        
+        .menu-title {
+            font-size: 1em; /* Reducido tamaño */
+            font-weight: bold;
+            color: #4a9eff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .menu-buttons {
+            display: flex;
+            gap: 8px; /* Reducido gap */
+        }
+        
+        .menu-btn {
+            background: #3a3a3a;
+            color: #e0e0e0;
+            border: 2px solid #4a9eff;
+            padding: 8px 15px; /* Reducido padding */
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.85em; /* Reducido tamaño de fuente */
+            white-space: nowrap;
+        }
+        
+        .menu-btn:hover {
+            background: #4a9eff;
+            color: #1a1a1a;
+        }
+        
+        .menu-btn.active {
+            background: #4a9eff;
+            color: #1a1a1a;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #242424;
+            box-shadow: 0 0 40px rgba(0,0,0,0.7);
+        }
+        
+        .header {
+            background: #2d2d2d;
+            color: #4a9eff;
+            padding: 30px 20px; /* Reducido padding */
+            text-align: center;
+            border-bottom: 3px solid #4a9eff;
+        }
+        
+        .header h1 {
+            font-size: 1.8em; /* Reducido para móviles */
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+        
+        .header p {
+            color: #b0b0b0;
+            font-size: 1em; /* Reducido */
+        }
+        
+        /* SECCIONES */
+        .section-content {
+            display: none;
+        }
+        
+        .section-content.active {
+            display: block;
+        }
+        
+        .objetivos {
+            background: #2d2d2d;
+            padding: 20px; /* Reducido */
+            border-left: 5px solid #4a9eff;
+            margin: 20px 15px; /* Reducido márgenes */
+        }
+        
+        .objetivos h2 {
+            color: #4a9eff;
+            margin-bottom: 15px;
+            font-size: 1.4em; /* Ajustado */
+        }
+        
+        .objetivos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Ajustado */
+            gap: 15px; /* Reducido */
+            margin-top: 15px;
+        }
+        
+        .objetivo-card {
+            background: #1a1a1a;
+            padding: 15px; /* Reducido */
+            border: 2px solid #4a9eff;
+            text-align: center;
+        }
+        
+        .objetivo-card .numero {
+            font-size: 1.5em; /* Reducido */
+            font-weight: bold;
+            color: #4a9eff;
+            margin-bottom: 8px;
+        }
+        
+        .section {
+            padding: 20px 15px; /* Reducido y ajustado para móviles */
+        }
+        
+        .section h2 {
+            color: #4a9eff;
+            font-size: 1.5em; /* Ajustado */
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #4a9eff;
+        }
+        
+        .comida-card {
+            background: #2d2d2d;
+            padding: 20px; /* Reducido */
+            margin-bottom: 20px;
+            border: 1px solid #3a3a3a;
+            transition: transform 0.3s ease;
+        }
+        
+        .comida-card:hover {
+            transform: translateX(5px);
+            border-color: #4a9eff;
+        }
+        
+        .comida-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap; /* Permite que se ajuste en móviles */
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #4a9eff;
+        }
+        
+        .comida-header h3 {
+            color: #4a9eff;
+            font-size: 1.2em; /* Ajustado */
+            margin-bottom: 5px; /* Para móviles */
+        }
+        
+        .hora {
+            background: #4a9eff;
+            color: #1a1a1a;
+            padding: 6px 12px; /* Reducido */
+            font-weight: bold;
+            font-size: 0.85em; /* Reducido */
+        }
+        
+        .objetivo-comida {
+            background: #3a3a3a;
+            padding: 10px;
+            margin-bottom: 15px;
+            color: #4a9eff;
+            font-weight: bold;
+            border-left: 3px solid #4a9eff;
+            font-size: 0.9em; /* Ajustado */
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: #2d2d2d;
+            font-size: 0.9em; /* Reducido para móviles */
+        }
+        
+        th {
+            background: #1a1a1a;
+            color: #4a9eff;
+            padding: 12px 10px; /* Reducido */
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #3a3a3a;
+        }
+        
+        td {
+            padding: 12px 10px; /* Reducido */
+            border: 1px solid #3a3a3a;
+            color: #e0e0e0;
+        }
+        
+        tr:hover {
+            background: #3a3a3a;
+        }
+        
+        .opcion {
+            background: #2d2d2d;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #4a9eff;
+        }
+        
+        .opcion h4 {
+            color: #4a9eff;
+            margin-bottom: 10px;
+            font-size: 1.1em; /* Ajustado */
+        }
+        
+        .opcion ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .opcion li {
+            padding: 5px 0;
+            padding-left: 20px; /* Reducido */
+            position: relative;
+            font-size: 0.95em; /* Ajustado */
+        }
+        
+        .opcion li:before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #4a9eff;
+            font-weight: bold;
+        }
+        
+        .rutina-dia {
+            background: #2d2d2d;
+            padding: 20px; /* Reducido */
+            margin-bottom: 20px;
+            border: 2px solid #4a9eff;
+        }
+        
+        .rutina-dia h3 {
+            color: #4a9eff;
+            font-size: 1.3em; /* Ajustado */
+            margin-bottom: 15px;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4a9eff;
+        }
+        
+        .ejercicio-seccion {
+            margin: 15px 0; /* Reducido */
+        }
+        
+        .ejercicio-seccion h4 {
+            color: #4a9eff;
+            margin-bottom: 10px;
+            font-size: 1.1em; /* Ajustado */
+            padding-left: 8px; /* Reducido */
+            border-left: 3px solid #4a9eff;
+        }
+        
+        .ejercicio-item {
+            background: #1a1a1a;
+            padding: 10px 15px; /* Reducido */
+            margin: 6px 0; /* Reducido */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #3a3a3a;
+            font-size: 0.95em; /* Ajustado */
+        }
+        
+        .ejercicio-nombre {
+            font-weight: 600;
+            color: #e0e0e0;
+            flex: 1; /* Permite que el texto se ajuste */
+            margin-right: 10px;
+        }
+        
+        .ejercicio-sets {
+            background: #4a9eff;
+            color: #1a1a1a;
+            padding: 4px 10px; /* Reducido */
+            font-size: 0.85em; /* Reducido */
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        
+        .importante {
+            background: #3a3a3a;
+            border-left: 5px solid #ff9800;
+            padding: 15px; /* Reducido */
+            margin: 15px 0; /* Reducido */
+        }
+        
+        .importante h3 {
+            color: #ff9800;
+            margin-bottom: 10px;
+            font-size: 1.2em; /* Ajustado */
+        }
+        
+        .suplemento-card {
+            background: #2d2d2d;
+            padding: 15px; /* Reducido */
+            margin: 12px 0; /* Reducido */
+            border: 1px solid #3a3a3a;
+        }
+        
+        .suplemento-card h4 {
+            color: #4a9eff;
+            margin-bottom: 8px;
+            font-size: 1.1em; /* Ajustado */
+        }
+        
+        .destacado {
+            border: 2px solid #4caf50;
+        }
+        
+        .destacado h4 {
+            color: #4caf50;
+        }
+        
+        /* MEDIA QUERIES MEJORADAS */
+        @media (max-width: 768px) {
+            body {
+                padding-top: 50px; /* Reducido aún más para móviles */
+            }
+            
+            .menu-container {
+                padding: 0 10px;
+            }
+            
+            .menu-title {
+                font-size: 0.9em;
+                max-width: 40%; /* Limita el ancho del título */
+            }
+            
+            .menu-buttons {
+                gap: 5px;
+            }
+            
+            .menu-btn {
+                padding: 6px 10px;
+                font-size: 0.8em;
+            }
+            
+            .header {
+                padding: 25px 15px;
+            }
+            
+            .header h1 {
+                font-size: 1.6em;
+            }
+            
+            .objetivos-grid {
+                grid-template-columns: 1fr; /* Una columna en móviles */
+                gap: 10px;
+            }
+            
+            .comida-header {
+                flex-direction: column; /* Cambia a columna en móviles */
+                align-items: flex-start;
+            }
+            
+            .comida-header h3 {
+                margin-bottom: 10px;
+            }
+            
+            .ejercicio-item {
+                flex-direction: column; /* Cambia a columna en móviles */
+                align-items: flex-start;
+            }
+            
+            .ejercicio-nombre {
+                margin-bottom: 5px;
+            }
+            
+            table {
+                font-size: 0.85em; /* Más pequeño en móviles */
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding-top: 45px; /* Mínimo espacio para el menú */
+            }
+            
+            .menu-title {
+                font-size: 0.8em;
+            }
+            
+            .menu-buttons {
+                gap: 3px;
+            }
+            
+            .menu-btn {
+                padding: 5px 8px;
+                font-size: 0.75em;
+            }
+            
+            .header h1 {
+                font-size: 1.4em;
+            }
+            
+            .header p {
+                font-size: 0.9em;
+            }
+            
+            .section {
+                padding: 15px 10px;
+            }
+            
+            .section h2 {
+                font-size: 1.3em;
+            }
+            
+            .comida-card {
+                padding: 15px;
+            }
+            
+            .rutina-dia {
+                padding: 15px;
+            }
+        }
+        
+        /* PARA PANTALLAS MUY PEQUEÑAS */
+        @media (max-width: 360px) {
+            .menu-title {
+                display: none; /* Oculta el título en pantallas muy pequeñas */
+            }
+            
+            .menu-buttons {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .menu-btn {
+                flex: 1;
+                text-align: center;
+                padding: 6px 5px;
+            }
+        }
+        
+        @media print {
+            body {
+                background: white;
+                color: black;
+                padding-top: 0;
+            }
+            
+            .menu-fixed {
+                display: none;
+            }
+            
+            .container {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- MENÚ FIJO COMPACTO -->
+    <div class="menu-fixed">
+        <div class="menu-container">
+            <div class="menu-title">PLAN DE ENTRENAMIENTO Y NUTRICIÓN</div>
+            <div class="menu-buttons">
+                <button class="menu-btn active" onclick="showSection('all')">TODO</button>
+                <button class="menu-btn" onclick="showSection('dieta')">DIETA</button>
+                <button class="menu-btn" onclick="showSection('entrenamiento')">ENTRENAMIENTO</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>PLAN DE ENTRENAMIENTO Y NUTRICIÓN</h1>
+            <p>Plan integral para ganancia de masa muscular</p>
+        </div>
+        
+        <!-- OBJETIVOS (siempre visible) -->
+        <div class="objetivos">
+            <h2>OBJETIVOS Y METAS</h2>
+            <div class="objetivos-grid">
+                <div class="objetivo-card">
+                    <div class="numero">2.900-3.100</div>
+                    <div>Calorías diarias</div>
+                </div>
+                <div class="objetivo-card">
+                    <div class="numero">110-120g</div>
+                    <div>Proteína diaria<br>(1.8-2g/kg)</div>
+                </div>
+                <div class="objetivo-card">
+                    <div class="numero">0.4-0.6 kg</div>
+                    <div>Ganancia mensual</div>
+                </div>
+            </div>
+            <div style="margin-top: 20px; padding: 15px; background: #1a1a1a; border: 1px solid #4a9eff;">
+                <strong>Prioridades:</strong> Desarrollo de piernas • Pecho, hombros y brazos • Mantener agilidad y coordinación
+            </div>
+        </div>
+
+        <!-- SECCIÓN DIETA -->
+        <div class="section-content active" id="dieta-section">
+            <div class="section">
+                <h2>PLAN NUTRICIONAL DIARIO</h2>
+                
+                <div class="comida-card">
+                    <div class="comida-header">
+                        <h3>1. DESAYUNO PRE-GYM</h3>
+                        <span class="hora">4:45</span>
+                    </div>
+                    <div class="objetivo-comida">Energía rápida, nada pesado</div>
+                    
+                    <div class="opcion">
+                        <h4>Opción A (Ideal)</h4>
+                        <ul>
+                            <li>1 banana grande</li>
+                            <li>2 huevos</li>
+                            <li>1 vaso de leche entera</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="opcion">
+                        <h4>Opción B</h4>
+                        <ul>
+                            <li>1 banana</li>
+                            <li>Pan con manteca o queso</li>
+                            <li>Café o leche</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="comida-card">
+                    <div class="comida-header">
+                        <h3>2. POST-ENTRENO / DESAYUNO FUERTE</h3>
+                        <span class="hora">6:30</span>
+                    </div>
+                    <div class="objetivo-comida">COMIDA CLAVE PARA CRECER - NO LA SALTEES</div>
+                    
+                    <div class="opcion">
+                        <h4>Opción Fija (Recomendada todos los días)</h4>
+                        <ul>
+                            <li>3-4 huevos</li>
+                            <li>Pan, mandioca o tortilla</li>
+                            <li>1 vaso de leche</li>
+                            <li>Si usás proteína: 1 scoop con agua o leche DESPUÉS de comer (no en ayunas)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="comida-card">
+                    <div class="comida-header">
+                        <h3>3. MEDIA MAÑANA</h3>
+                        <span class="hora">10:00-11:00</span>
+                    </div>
+                    <div class="objetivo-comida">Frenar el catabolismo</div>
+                    
+                    <table>
+                        <tr>
+                            <th>Opciones Económicas</th>
+                        </tr>
+                        <tr><td>Pan con huevo</td></tr>
+                        <tr><td>Yogur + banana</td></tr>
+                        <tr><td>Maní (1 puñado)</td></tr>
+                        <tr><td>Sándwich simple de queso o pollo</td></tr>
+                    </table>
+                </div>
+
+                <div class="comida-card">
+                    <div class="comida-header">
+                        <h3>4. ALMUERZO</h3>
+                        <span class="hora">13:00-14:00</span>
+                    </div>
+                    <div class="objetivo-comida">Plato grande - Sin miedo al carbohidrato</div>
+                    
+                    <div class="opcion">
+                        <h4>Base Diaria</h4>
+                        <ul>
+                            <li>Arroz / fideos / mandioca (abundante)</li>
+                            <li>Verdura simple</li>
+                            <li>Aceite o grasa</li>
+                        </ul>
+                    </div>
+                    
+                    <table>
+                        <tr>
+                            <th>Proteínas (elegí 1 por día)</th>
+                        </tr>
+                        <tr><td>Pollo (200g)</td></tr>
+                        <tr><td>Carne molida</td></tr>
+                        <tr><td>Huevo (4-5 si no hay carne)</td></tr>
+                    </table>
+                    
+                    <div style="background: #3a3a3a; padding: 15px; margin-top: 15px; border-left: 3px solid #4a9eff;">
+                        <strong>Ejemplo realista:</strong> Plato lleno de arroz + 200g de pollo + Ensalada simple
+                    </div>
+                </div>
+
+                <div class="comida-card">
+                    <div class="comida-header">
+                        <h3>5. MERIENDA</h3>
+                        <span class="hora">17:00-18:00</span>
+                    </div>
+                    <div class="objetivo-comida">NO LA SALTEES o no subís de peso</div>
+                    
+                    <table>
+                        <tr>
+                            <th>Opciones</th>
+                        </tr>
+                        <tr><td>Batido casero: Leche + banana + avena</td></tr>
+                        <tr><td>Pan con huevo</td></tr>
+                        <tr><td>Yogur + maní</td></tr>
+                        <tr><td>Restos del almuerzo (sí, sirve)</td></tr>
+                    </table>
+                </div>
+
+                <div class="comida-card">
+                    <div class="comida-header">
+                        <h3>6. CENA</h3>
+                        <span class="hora">20:00-21:00</span>
+                    </div>
+                    <div class="objetivo-comida">NO COMAS LIVIANO - Error clásico</div>
+                    
+                    <div class="opcion">
+                        <h4>Opción A</h4>
+                        <ul>
+                            <li>Arroz o fideos</li>
+                            <li>3 huevos o carne</li>
+                            <li>Verdura cocida</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="opcion">
+                        <h4>Opción B</h4>
+                        <ul>
+                            <li>Guiso de arroz o fideos</li>
+                            <li>Carne molida o pollo</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="comida-card">
+                    <div class="comida-header">
+                        <h3>7. ANTES DE DORMIR</h3>
+                        <span class="hora">Opcional pero recomendado</span>
+                    </div>
+                    <div class="objetivo-comida">Si te acostás con hambre</div>
+                    
+                    <ul style="padding-left: 25px; list-style: none;">
+                        <li style="padding: 5px 0; position: relative; padding-left: 25px;">
+                            <span style="position: absolute; left: 0; color: #4a9eff; font-weight: bold;">▸</span>
+                            1 vaso de leche
+                        </li>
+                        <li style="padding: 5px 0; position: relative; padding-left: 25px;">
+                            <span style="position: absolute; left: 0; color: #4a9eff; font-weight: bold;">▸</span>
+                            Pan o banana
+                        </li>
+                    </ul>
+                </div>
+
+                <h2 style="color: #4a9eff; font-size: 1.8em; margin: 40px 0 20px 0; padding-bottom: 10px; border-bottom: 3px solid #4a9eff;">ROTACIÓN SEMANAL DE PROTEÍNAS</h2>
+                <table>
+                    <tr>
+                        <th>Día</th>
+                        <th>Proteína Principal (Almuerzo/Cena)</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Lunes</strong></td>
+                        <td>Pollo</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Martes</strong></td>
+                        <td>Carne molida</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Miércoles</strong></td>
+                        <td>Huevo</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Jueves</strong></td>
+                        <td>Pollo</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Viernes</strong></td>
+                        <td>Carne</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sábado</strong></td>
+                        <td>Libre controlado</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Domingo</strong></td>
+                        <td>Libre + abundante</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section" style="background: #2d2d2d;">
+                <h2>SUPLEMENTACIÓN</h2>
+                
+                <div class="suplemento-card">
+                    <h4>Proteína en Polvo</h4>
+                    <p><strong>Útil pero OPCIONAL</strong></p>
+                    <p>Usar solo después de comer, nunca en ayunas</p>
+                </div>
+                
+                <div class="suplemento-card destacado">
+                    <h4>Creatina - SÍ RECOMIENDO</h4>
+                    <p><strong>Dosis:</strong> 5g diarios, cualquier hora</p>
+                    <p><strong>Ventajas:</strong> Barata y muy efectiva</p>
+                </div>
+            </div>
+
+            <div class="section" style="background: #1a1a1a;">
+                <h2>AJUSTES IMPORTANTES POR TU SUEÑO (6h)</h2>
+                <div class="importante">
+                    <ul style="padding-left: 25px; line-height: 2; list-style: none;">
+                        <li style="padding: 5px 0; position: relative; padding-left: 25px;">
+                            <span style="position: absolute; left: 0; color: #ff9800; font-weight: bold;">▸</span>
+                            <strong>NO entrenes en ayunas</strong>
+                        </li>
+                        <li style="padding: 5px 0; position: relative; padding-left: 25px;">
+                            <span style="position: absolute; left: 0; color: #ff9800; font-weight: bold;">▸</span>
+                            <strong>NO saltees comidas</strong>
+                        </li>
+                        <li style="padding: 5px 0; position: relative; padding-left: 25px;">
+                            <span style="position: absolute; left: 0; color: #ff9800; font-weight: bold;">▸</span>
+                            <strong>Más arroz/pan si estás estancado</strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN ENTRENAMIENTO -->
+        <div class="section-content active" id="entrenamiento-section">
+            <div class="section">
+                <h2>RUTINA DE ENTRENAMIENTO</h2>
+                <div class="importante">
+                    <h3>Estructura del Entrenamiento</h3>
+                    <p><strong>Duración:</strong> 5 días × 45 minutos exactos</p>
+                    <p><strong>Distribución:</strong> 5 min activación + 35 min trabajo principal + 5 min core/potencia/movilidad</p>
+                    <p><strong>Descansos:</strong> 60-90 segundos</p>
+                    <p><strong>Rango repeticiones:</strong> 6-12</p>
+                    <p><strong>Carga:</strong> Pesada pero con técnica limpia</p>
+                </div>
+
+                <div class="rutina-dia">
+                    <h3>DÍA 1 - PIERNA (FUERZA + MASA)</h3>
+                    
+                    <div class="ejercicio-seccion">
+                        <h4>Activación (5 min)</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Sentadilla aérea</span>
+                            <span class="ejercicio-sets">20 reps</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Zancadas caminando</span>
+                            <span class="ejercicio-sets">20 reps</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Movilidad cadera y tobillo</span>
+                            <span class="ejercicio-sets">-</span>
+                        </div>
+                    </div>
+
+                    <div class="ejercicio-seccion">
+                        <h4>Trabajo Principal</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Sentadilla con barra</span>
+                            <span class="ejercicio-sets">4 × 6-8</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Prensa</span>
+                            <span class="ejercicio-sets">3 × 10</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Peso muerto rumano</span>
+                            <span class="ejercicio-sets">3 × 8</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Extensión de cuádriceps</span>
+                            <span class="ejercicio-sets">3 × 12</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Elevaciones de gemelos</span>
+                            <span class="ejercicio-sets">4 × 15</span>
+                        </div>
+                    </div>
+
+                    <div class="ejercicio-seccion">
+                        <h4>Final (5 min)</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Saltos al cajón o verticales</span>
+                            <span class="ejercicio-sets">4 × 6</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rutina-dia">
+                    <h3>DÍA 2 - PECHO + TRÍCEPS</h3>
+                    
+                    <div class="ejercicio-seccion">
+                        <h4>Trabajo Principal</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Press banca plano</span>
+                            <span class="ejercicio-sets">4 × 6-8</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Press inclinado mancuernas</span>
+                            <span class="ejercicio-sets">3 × 8-10</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Aperturas</span>
+                            <span class="ejercicio-sets">3 × 12</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Fondos en paralelas</span>
+                            <span class="ejercicio-sets">3 × fallo</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Extensión de tríceps en polea</span>
+                            <span class="ejercicio-sets">3 × 10-12</span>
+                        </div>
+                    </div>
+
+                    <div class="ejercicio-seccion">
+                        <h4>Core</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Plancha frontal</span>
+                            <span class="ejercicio-sets">3 × 40s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rutina-dia">
+                    <h3>DÍA 3 - PIERNA (VOLUMEN + AGILIDAD)</h3>
+                    
+                    <div class="ejercicio-seccion">
+                        <h4>Trabajo Principal</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Sentadilla frontal o goblet</span>
+                            <span class="ejercicio-sets">4 × 10</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Zancadas búlgaras</span>
+                            <span class="ejercicio-sets">3 × 10 c/pierna</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Curl femoral</span>
+                            <span class="ejercicio-sets">3 × 12</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Hip thrust</span>
+                            <span class="ejercicio-sets">3 × 10</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Gemelos sentado</span>
+                            <span class="ejercicio-sets">4 × 15</span>
+                        </div>
+                    </div>
+
+                    <div class="ejercicio-seccion">
+                        <h4>Agilidad</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Escalera o skipping rápido</span>
+                            <span class="ejercicio-sets">5 min</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rutina-dia">
+                    <h3>DÍA 4 - ESPALDA + BÍCEPS</h3>
+                    
+                    <div class="ejercicio-seccion">
+                        <h4>Trabajo Principal</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Dominadas</span>
+                            <span class="ejercicio-sets">4 × fallo</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Remo con barra</span>
+                            <span class="ejercicio-sets">4 × 8</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Jalón al pecho</span>
+                            <span class="ejercicio-sets">3 × 10</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Curl barra</span>
+                            <span class="ejercicio-sets">3 × 8-10</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Curl martillo</span>
+                            <span class="ejercicio-sets">3 × 10</span>
+                        </div>
+                    </div>
+
+                    <div class="ejercicio-seccion">
+                        <h4>Core</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Elevaciones de piernas</span>
+                            <span class="ejercicio-sets">3 × 12</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rutina-dia">
+                    <h3>DÍA 5 - HOMBROS + BRAZOS</h3>
+                    
+                    <div class="ejercicio-seccion">
+                        <h4>Trabajo Principal</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Press militar</span>
+                            <span class="ejercicio-sets">4 × 6-8</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Elevaciones laterales</span>
+                            <span class="ejercicio-sets">4 × 12</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Elevaciones posteriores</span>
+                            <span class="ejercicio-sets">3 × 12</span>
+                        </div>
+                    </div>
+
+                    <div class="ejercicio-seccion">
+                        <h4>Superseries</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Curl bíceps + Fondos banco</span>
+                            <span class="ejercicio-sets">3 × 12</span>
+                        </div>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Tríceps polea + Curl cable</span>
+                            <span class="ejercicio-sets">3 × 12</span>
+                        </div>
+                    </div>
+
+                    <div class="ejercicio-seccion">
+                        <h4>Explosividad</h4>
+                        <div class="ejercicio-item">
+                            <span class="ejercicio-nombre">Lanzamientos de balón o flexiones explosivas</span>
+                            <span class="ejercicio-sets">3 × 6</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>CÓMO SABER SI FUNCIONA</h2>
+                <table>
+                    <tr>
+                        <th>Indicador</th>
+                        <th>Meta</th>
+                    </tr>
+                    <tr>
+                        <td>Peso corporal</td>
+                        <td>Subís 300-500g por semana</td>
+                    </tr>
+                    <tr>
+                        <td>Fuerza</td>
+                        <td>Más peso en piernas progresivamente</td>
+                    </tr>
+                    <tr>
+                        <td>Apetito</td>
+                        <td>Más hambre (es normal y positivo)</td>
+                    </tr>
+                </table>
+                
+                <div class="importante" style="margin-top: 20px;">
+                    <h3>Si en 2 semanas no subís de peso</h3>
+                    <p style="font-size: 1.2em;"><strong>El problema NO es el plan: estás comiendo poco.</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showSection(section) {
+            const dietaSection = document.getElementById('dieta-section');
+            const entrenamientoSection = document.getElementById('entrenamiento-section');
+            const buttons = document.querySelectorAll('.menu-btn');
+            
+            // Remover clase active de todos los botones
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            if (section === 'all') {
+                dietaSection.classList.add('active');
+                entrenamientoSection.classList.add('active');
+                buttons[0].classList.add('active');
+            } else if (section === 'dieta') {
+                dietaSection.classList.add('active');
+                entrenamientoSection.classList.remove('active');
+                buttons[1].classList.add('active');
+            } else if (section === 'entrenamiento') {
+                dietaSection.classList.remove('active');
+                entrenamientoSection.classList.add('active');
+                buttons[2].classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>
