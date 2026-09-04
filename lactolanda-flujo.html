@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lactolanda · Trazabilidad de la Cadena de Valor</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: '#0A0F1C',
+          panel: '#101A2E',
+          panel2: '#152036',
+          hairline: '#26324A',
+          muted: '#8CA0C1',
+          bright: '#F3F1E8',
+          cream: '#F1E7CE',
+          entrada: '#C2760B',
+          interna: '#2DD4BF',
+          salida: '#6C7BF5',
+          inversa: '#F0455E',
+        },
+        fontFamily: {
+          display: ['"Space Grotesk"', 'sans-serif'],
+          body: ['"Inter"', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  html, body { background:#0A0F1C; }
+  body { font-family: 'Inter', sans-serif; }
+  ::selection { background: #C2760B; color: #0A0F1C; }
+  #bg-canvas { position: fixed; inset: 0; z-index: 0; opacity: .55; pointer-events: none; }
+  .scrim { position: fixed; inset:0; z-index:1; pointer-events:none;
+    background: radial-gradient(120% 90% at 50% -10%, rgba(10,15,28,0) 0%, rgba(10,15,28,.55) 55%, #0A0F1C 100%); }
+  #root { position: relative; z-index: 2; }
+  .rail-line { background: linear-gradient(to bottom, transparent, #26324A 6%, #26324A 94%, transparent); }
+  .code-chip { font-family: 'JetBrains Mono', monospace; letter-spacing: .01em; }
+  .node-card { transition: border-color .25s ease, background-color .25s ease, opacity .3s ease, filter .3s ease; }
+  .node-card.dim { opacity: .28; filter: grayscale(.4); }
+  .marker-dot { transition: box-shadow .25s ease, background-color .25s ease, border-color .25s ease; }
+  select { -webkit-appearance:none; appearance:none; }
+  .scrollbar-thin::-webkit-scrollbar{ width:6px; height:6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb{ background:#26324A; border-radius:4px; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body class="bg-ink text-bright">
+
+<canvas id="bg-canvas"></canvas>
+<div class="scrim"></div>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback } = React;
+
+/* ---------------------------------------------------------------------- */
+/* THREE.JS — fondo ambiental: flujo de partículas (leche / producto)      */
+/* ---------------------------------------------------------------------- */
+function initFlowBackground() {
+  const canvas = document.getElementById('bg-canvas');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, 0, 18);
+
+  function resize() {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Textura de gota suave generada por canvas (sin assets externos)
+  function makeDropTexture() {
+    const size = 64;
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    g.addColorStop(0, 'rgba(241,231,206,0.95)');
+    g.addColorStop(0.4, 'rgba(241,231,206,0.55)');
+    g.addColorStop(1, 'rgba(241,231,206,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+    return new THREE.CanvasTexture(c);
+  }
+  const texture = makeDropTexture();
+
+  const COUNT = reduced ? 0 : 260;
+  const positions = new Float32Array(COUNT * 3);
+  const speeds = new Float32Array(COUNT);
+  const spanX = 26, spanY = 16, spanZ = 14;
+  for (let i = 0; i < COUNT; i++) {
+    positions[i*3+0] = (Math.random() - 0.5) * spanX;
+    positions[i*3+1] = (Math.random() - 0.5) * spanY * 2;
+    positions[i*3+2] = (Math.random() - 0.5) * spanZ;
+    speeds[i] = 0.01 + Math.random() * 0.025;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.PointsMaterial({
+    size: 0.34,
+    map: texture,
+    transparent: true,
+    depthWrite: false,
+    color: new THREE.Color('#F1E7CE'),
+    opacity: 0.5,
+    blending: THREE.AdditiveBlending,
+  });
+  const points = new THREE.Points(geometry, material);
+  scene.add(points);
+
+  // líneas finas verticales sugiriendo "carriles" de flujo
+  const laneColors = ['#C2760B', '#2DD4BF', '#6C7BF5'];
+  const lanes = new THREE.Group();
+  for (let i = 0; i < 3; i++) {
+    const mat = new THREE.LineBasicMaterial({ color: laneColors[i], transparent: true, opacity: 0.10 });
+    const pts = [ new THREE.Vector3(-9 + i*9, -12, -6), new THREE.Vector3(-9 + i*9, 12, -6) ];
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    lanes.add(new THREE.Line(geo, mat));
+  }
+  scene.add(lanes);
+
+  let raf;
+  function tick() {
+    const pos = geometry.attributes.position;
+    for (let i = 0; i < COUNT; i++) {
+      let y = pos.getY(i) - speeds[i];
+      if (y < -spanY) y = spanY;
+      pos.setY(i, y);
+    }
+    pos.needsUpdate = true;
+    renderer.render(scene, camera);
+    raf = requestAnimationFrame(tick);
+  }
+  if (!reduced) tick(); else renderer.render(scene, camera);
+
+  return () => {
+    cancelAnimationFrame(raf);
+    window.removeEventListener('resize', resize);
+    geometry.dispose(); material.dispose(); texture.dispose(); renderer.dispose();
+  };
+}
+
+/* ---------------------------------------------------------------------- */
+/* DATOS DEL DOMINIO                                                       */
+/* ---------------------------------------------------------------------- */
+const LANES = {
+  entrada: { label: 'Logística de Entrada', sub: 'Aprovisionamiento de materia prima', color: '#C2760B', tw: 'entrada' },
+  interna: { label: 'Logística Interna', sub: 'Intralogística: producción y almacenamiento', color: '#2DD4BF', tw: 'interna' },
+  salida:  { label: 'Logística de Salida', sub: 'Distribución hasta el consumidor final', color: '#6C7BF5', tw: 'salida' },
+  inversa: { label: 'Logística Inversa', sub: 'Devolución y trazabilidad hacia atrás', color: '#F0455E', tw: 'inversa' },
+};
+
+const ICONS = {
+  drop:   "M12 2.5c3.2 4 6 8 6 11.4A6 6 0 1 1 6 13.9c0-3.4 2.8-7.4 6-11.4Z",
+  truck:  "M2 6h11v9H2zM13 10h4l3 3v2h-7zM6 18a1.7 1.7 0 1 0 0-3.4A1.7 1.7 0 0 0 6 18ZM16.5 18a1.7 1.7 0 1 0 0-3.4 1.7 1.7 0 0 0 0 3.4Z",
+  inbox:  "M3 12h4l2 3h6l2-3h4M3 12l2-7h14l2 7M3 12v6a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-6",
+  gear:   "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7ZM12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8",
+  box:    "M3 7l9-4 9 4-9 4-9-4Zm0 0v10l9 4 9-4V7M12 11v10",
+  archive:"M3 7h18v3H3zM4 10h16v10H4zM9 14h6",
+  store:  "M4 10l1-5h14l1 5M4 10v9h16v-9M4 10h16M9 19v-5h6v5",
+  user:   "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21c1.6-3.8 4.6-6 8-6s6.4 2.2 8 6",
+  refresh:"M4 4v5h5M20 20v-5h-5M4.6 15A8 8 0 0 0 19 9.4M19.4 9A8 8 0 0 0 5 14.6",
+};
+function Icon({ name, className }) {
+  return React.createElement('svg', {
+    viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+    strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round', className,
+  }, React.createElement('path', { d: ICONS[name] || ICONS.box }));
+}
+
+const FORWARD_NODES = [
+  { id: 'tambero',      lane: 'entrada', title: 'Tambero',                 icon: 'drop',    field: 'tambero',
+    master: 'Maestro de Proveedores Primarios — 125 tamberos', link: 'El acopiador de su zona recolecta la producción.' },
+  { id: 'acopiador',    lane: 'entrada', title: 'Acopiador',               icon: 'truck',   field: 'acopiador',
+    master: 'Maestro de Proveedores Mayoristas — 5 acopiadores', link: 'Entrega el lote bajo contrato en la planta.' },
+  { id: 'recepcion',    lane: 'entrada', title: 'Recepción en Planta',     icon: 'inbox',   field: 'recepcion',
+    master: 'Registro de recepción — lote y control de calidad', link: 'La materia prima aprobada pasa a producción.' },
+  { id: 'produccion',   lane: 'interna', title: 'Producción',              icon: 'gear',    field: 'produccion',
+    master: 'Órdenes de Producción', link: 'Se obtiene el producto envasado.' },
+  { id: 'terminado',    lane: 'interna', title: 'Producto Terminado',      icon: 'box',     field: 'terminado',
+    master: 'Maestro de Catálogo de Productos', link: 'El lote ingresa al depósito central.' },
+  { id: 'deposito',     lane: 'interna', title: 'Depósito',                icon: 'archive', field: 'deposito',
+    master: 'Control de Inventario', link: 'Se despacha a un Centro de Distribución.' },
+  { id: 'cd',           lane: 'salida',  title: 'Centro de Distribución',  icon: 'archive', field: 'cd',
+    master: 'Maestro de Centros de Distribución — 13 CD', link: 'Un distribuidor mayorista retira el pedido.' },
+  { id: 'distribuidor', lane: 'salida',  title: 'Distribuidor Mayorista',  icon: 'truck',   field: 'distribuidor',
+    master: 'Maestro de Distribuidores — 65 distribuidores', link: 'Reparte el producto en su hoja de ruta.' },
+  { id: 'pdv',          lane: 'salida',  title: 'Punto de Venta',          icon: 'store',   field: 'pdv',
+    master: 'Maestro de Puntos de Venta', link: 'El producto queda disponible para la compra.' },
+  { id: 'consumidor',   lane: 'salida',  title: 'Consumidor Final',        icon: 'user',    field: 'consumidor',
+    master: '—', link: null },
+];
+
+const REVERSE_NODES = [
+  { id: 'r-pdv',          lane: 'inversa', title: 'Punto de Venta',          icon: 'store',   field: 'pdv',
+    master: 'Registro de Devoluciones', link: 'Detecta el problema y solicita la devolución.' },
+  { id: 'r-distribuidor', lane: 'inversa', title: 'Distribuidor Mayorista',  icon: 'truck',   field: 'distribuidor',
+    master: 'Registro de Devoluciones', link: 'Retira el producto de su hoja de ruta.' },
+  { id: 'r-cd',           lane: 'inversa', title: 'Centro de Distribución',  icon: 'archive', field: 'cd',
+    master: 'Registro de Devoluciones', link: 'Consolida la devolución hacia planta.' },
+  { id: 'r-devolucion',   lane: 'inversa', title: 'Recepción de Devolución', icon: 'refresh', field: 'devolucion',
+    master: 'Registro de Devoluciones', link: null },
+];
+
+const PRODUCTS = [
+  {
+    id: 'yogurt', code: 'P003', name: 'Yogurt Natural', hasReturn: true,
+    data: {
+      tambero:      { code: 'T034',        detail: 'Tambero T034, dentro de la zona asignada al Acopiador 2.' },
+      acopiador:    { code: 'A02',         detail: 'Acopiador 2 recolecta la producción de 35 tamberos de su zona.' },
+      recepcion:    { code: 'Lote L001',   detail: '4.200 litros recibidos. Control de calidad aprobado.' },
+      produccion:   { code: 'OP001',       detail: 'Orden de Producción OP001, a partir del Lote L001.' },
+      terminado:    { code: 'Lote L-Y001', detail: '1.000 unidades producidas. Vencimiento a 21 días.' },
+      deposito:     { code: 'Depósito Central', detail: 'Ingresan 1.000 u.; se despachan 300 u. — stock actual: 700 u.' },
+      cd:           { code: 'CD 03',       detail: 'Centro de Distribución 03 recibe las 300 unidades.' },
+      distribuidor: { code: 'D03-02',      detail: 'Distribuidor Mayorista D03-02 retira el pedido.' },
+      pdv:          { code: 'Supermercado X', detail: 'Punto de venta tipo Supermercado.' },
+      consumidor:   { code: 'Compra registrada', detail: 'El consumidor adquiere el Yogurt Lote L-Y001.' },
+      devolucion:   { code: 'DEV-0456',    detail: '20 unidades del Lote L-Y001 devueltas. Motivo: producto vencido.' },
+    },
+  },
+  {
+    id: 'leche-entera', code: 'P001', name: 'Leche Entera', hasReturn: false,
+    data: {
+      tambero:      { code: 'T012',        detail: 'Tambero T012, zona del Acopiador 1.' },
+      acopiador:    { code: 'A01',         detail: 'Acopiador 1 recolecta la producción de 25 tamberos.' },
+      recepcion:    { code: 'Lote L014',   detail: '3.100 litros recibidos. Control de calidad aprobado.' },
+      produccion:   { code: 'OP014',       detail: 'Orden de Producción OP014, a partir del Lote L014.' },
+      terminado:    { code: 'Lote L-LE014', detail: '2.500 unidades producidas. Vencimiento a 45 días.' },
+      deposito:     { code: 'Depósito Central', detail: 'Ingresan 2.500 u.; se despachan 900 u. — stock actual: 1.600 u.' },
+      cd:           { code: 'CD 07',       detail: 'Centro de Distribución 07 recibe el despacho.' },
+      distribuidor: { code: 'D07-04',      detail: 'Distribuidor Mayorista D07-04 retira el pedido.' },
+      pdv:          { code: 'Despensa Don Ramón', detail: 'Punto de venta tipo Despensa.' },
+      consumidor:   { code: 'Compra registrada', detail: 'El consumidor adquiere la Leche Entera Lote L-LE014.' },
+    },
+  },
+  {
+    id: 'queso', code: 'P009', name: 'Queso Paraguay', hasReturn: true,
+    data: {
+      tambero:      { code: 'T089',        detail: 'Tambero T089, zona del Acopiador 4.' },
+      acopiador:    { code: 'A04',         detail: 'Acopiador 4 recolecta la producción de 30 tamberos.' },
+      recepcion:    { code: 'Lote L033',   detail: '2.800 litros recibidos. Control de calidad aprobado.' },
+      produccion:   { code: 'OP033',       detail: 'Orden de Producción OP033, a partir del Lote L033.' },
+      terminado:    { code: 'Lote L-Q033', detail: '600 unidades producidas. Vencimiento a 60 días.' },
+      deposito:     { code: 'Depósito Central', detail: 'Ingresan 600 u.; se despachan 150 u. — stock actual: 450 u.' },
+      cd:           { code: 'CD 11',       detail: 'Centro de Distribución 11 recibe el despacho.' },
+      distribuidor: { code: 'D11-01',      detail: 'Distribuidor Mayorista D11-01 retira el pedido.' },
+      pdv:          { code: 'Autoservicio Norte', detail: 'Punto de venta tipo Autoservicio.' },
+      consumidor:   { code: 'Compra registrada', detail: 'El consumidor adquiere el Queso Lote L-Q033.' },
+      devolucion:   { code: 'DEV-0198',    detail: '15 unidades del Lote L-Q033 devueltas. Motivo: envase dañado en transporte.' },
+    },
+  },
+  {
+    id: 'dulce', code: 'P011', name: 'Dulce de Leche', hasReturn: false,
+    data: {
+      tambero:      { code: 'T101',        detail: 'Tambero T101, zona del Acopiador 5.' },
+      acopiador:    { code: 'A05',         detail: 'Acopiador 5 recolecta la producción de 15 tamberos.' },
+      recepcion:    { code: 'Lote L050',   detail: '1.900 litros recibidos. Control de calidad aprobado.' },
+      produccion:   { code: 'OP050',       detail: 'Orden de Producción OP050, a partir del Lote L050.' },
+      terminado:    { code: 'Lote L-D050', detail: '800 unidades producidas. Vencimiento a 90 días.' },
+      deposito:     { code: 'Depósito Central', detail: 'Ingresan 800 u.; se despachan 200 u. — stock actual: 600 u.' },
+      cd:           { code: 'CD 09',       detail: 'Centro de Distribución 09 recibe el despacho.' },
+      distribuidor: { code: 'D09-03',      detail: 'Distribuidor Mayorista D09-03 retira el pedido.' },
+      pdv:          { code: 'Hotel Las Palmas', detail: 'Punto de venta tipo HORECA.' },
+      consumidor:   { code: 'Compra registrada', detail: 'El consumidor adquiere el Dulce de Leche Lote L-D050.' },
+    },
+  },
+];
+
+/* ---------------------------------------------------------------------- */
+/* COMPONENTES                                                             */
+/* ---------------------------------------------------------------------- */
+function NodeCard({ node, product, isActive, isDimmed, onClick, cardRef, index }) {
+  const lane = LANES[node.lane];
+  const info = product.data[node.field];
+  return (
+    <div ref={cardRef} className="relative pl-14 sm:pl-16" data-node-card>
+      <span
+        className="marker-dot absolute left-[19px] sm:left-[23px] top-6 h-3 w-3 -translate-x-1/2 rounded-full border-2"
+        style={{
+          borderColor: lane.color,
+          backgroundColor: isActive ? lane.color : '#101A2E',
+          boxShadow: isActive ? `0 0 0 5px ${lane.color}33` : 'none',
+        }}
+      />
+      <button
+        onClick={() => onClick(node.id)}
+        className={`node-card group w-full rounded-xl border bg-panel/80 p-4 text-left backdrop-blur-sm sm:p-5
+          ${isActive ? 'border-current' : 'border-hairline hover:border-muted/50'} ${isDimmed ? 'dim' : ''}`}
+        style={{ color: isActive ? lane.color : undefined }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+              style={{ backgroundColor: `${lane.color}1F`, color: lane.color }}
+            >
+              <Icon name={node.icon} className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="font-display text-[15px] font-semibold text-bright sm:text-base">{node.title}</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted/80">{lane.label}</p>
+            </div>
+          </div>
+          <span
+            className="code-chip shrink-0 rounded-md border px-2 py-1 text-[11px]"
+            style={{ borderColor: `${lane.color}55`, color: lane.color }}
+          >
+            {info.code}
+          </span>
+        </div>
+        {node.link && (
+          <p className="mt-3 text-[13px] leading-snug text-muted">{node.link}</p>
+        )}
+      </button>
+    </div>
+  );
+}
+
+function DetailPanel({ node, product }) {
+  if (!node) {
+    return (
+      <div className="rounded-xl border border-dashed border-hairline p-6 text-sm text-muted">
+        Hacé clic en cualquier etapa de la cadena para ver el detalle del ejemplo, o presioná
+        <span className="code-chip mx-1 rounded border border-hairline px-1.5 py-0.5 text-[11px] text-bright">Reproducir flujo</span>
+        para recorrerla completa.
+      </div>
+    );
+  }
+  const lane = LANES[node.lane];
+  const info = product.data[node.field];
+  return (
+    <div className="rounded-xl border p-5" style={{ borderColor: `${lane.color}55`, backgroundColor: `${lane.color}0D` }}>
+      <p className="text-[11px] uppercase tracking-wide" style={{ color: lane.color }}>{lane.label}</p>
+      <h3 className="font-display mt-1 text-lg font-semibold text-bright">{node.title}</h3>
+      <p className="code-chip mt-2 inline-block rounded-md border px-2 py-1 text-xs" style={{ borderColor: `${lane.color}55`, color: lane.color }}>
+        {info.code}
+      </p>
+      <p className="mt-3 text-sm leading-relaxed text-bright/90">{info.detail}</p>
+      {node.master && node.master !== '—' && (
+        <p className="mt-4 border-t border-hairline pt-3 text-xs text-muted">
+          Módulo del sistema: <span className="text-bright/80">{node.master}</span>
+        </p>
+      )}
+      {node.link && <p className="mt-2 text-xs text-muted">Siguiente paso: {node.link}</p>}
+    </div>
+  );
+}
+
+function App() {
+  const [productId, setProductId] = useState('yogurt');
+  const [mode, setMode] = useState('directo');
+  const [activeId, setActiveId] = useState(null);
+  const [playing, setPlaying] = useState(false);
+
+  const product = PRODUCTS.find(p => p.id === productId);
+  const nodes = mode === 'directo' ? FORWARD_NODES : REVERSE_NODES;
+
+  const listRef = useRef(null);
+  const cardRefs = useRef({});
+  const dotRef = useRef(null);
+  const tlRef = useRef(null);
+
+  // Fondo three.js — se inicializa una sola vez
+  useEffect(() => {
+    const cleanup = initFlowBackground();
+    return cleanup;
+  }, []);
+
+  // Reinicia selección y detiene animación al cambiar de producto o modo
+  useEffect(() => {
+    if (tlRef.current) tlRef.current.kill();
+    setPlaying(false);
+    setActiveId(null);
+  }, [productId, mode]);
+
+  // Entrada animada de las tarjetas (un único momento orquestado)
+  useLayoutEffect(() => {
+    const cards = listRef.current ? listRef.current.querySelectorAll('[data-node-card]') : [];
+    gsap.fromTo(
+      cards,
+      { opacity: 0, y: 18 },
+      { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', stagger: 0.06, delay: 0.05 }
+    );
+  }, [mode, productId]);
+
+  const handleNodeClick = useCallback((id) => {
+    setActiveId(prev => (prev === id ? null : id));
+  }, []);
+
+  const playFlow = useCallback(() => {
+    if (tlRef.current) tlRef.current.kill();
+    const order = nodes.map(n => n.id);
+    const container = listRef.current;
+    if (!container) return;
+
+    const containerTop = container.getBoundingClientRect().top;
+    const centers = order.map(id => {
+      const el = cardRefs.current[id];
+      const r = el.getBoundingClientRect();
+      return r.top - containerTop + r.height / 2;
+    });
+
+    if (dotRef.current) {
+      gsap.set(dotRef.current, { opacity: 1, top: centers[0] });
+    }
+
+    setPlaying(true);
+    const tl = gsap.timeline({
+      onComplete: () => setPlaying(false),
+    });
+    order.forEach((id, i) => {
+      tl.call(() => setActiveId(id));
+      if (dotRef.current && i > 0) {
+        tl.to(dotRef.current, { top: centers[i], duration: 0.55, ease: 'power2.inOut' }, '<');
+      }
+      tl.to({}, { duration: 0.55 });
+    });
+    tl.call(() => { if (dotRef.current) gsap.to(dotRef.current, { opacity: 0, duration: 0.4 }); });
+    tlRef.current = tl;
+  }, [nodes]);
+
+  const activeNode = nodes.find(n => n.id === activeId) || null;
+  const showReverseEmptyState = mode === 'inversa' && !product.hasReturn;
+
+  return (
+    <div className="min-h-screen">
+      <header className="border-b border-hairline/70 bg-ink/60 backdrop-blur-sm">
+        <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-entrada">Sistema de Trazabilidad · Lactolanda</p>
+              <h1 className="font-display mt-1 text-2xl font-semibold text-bright sm:text-3xl">
+                Del tambo al consumidor
+              </h1>
+              <p className="mt-1 max-w-md text-sm text-muted">
+                Recorrido de la cadena de valor: aprovisionamiento, producción, distribución y devoluciones.
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <label className="text-[11px] uppercase tracking-wide text-muted">Producto de ejemplo</label>
+              <select
+                value={productId}
+                onChange={e => setProductId(e.target.value)}
+                className="code-chip rounded-lg border border-hairline bg-panel px-3 py-2 text-sm text-bright outline-none focus:border-entrada"
+              >
+                {PRODUCTS.map(p => (
+                  <option key={p.id} value={p.id}>{p.code} — {p.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            {Object.keys(LANES).map(id => (
+              <span key={id} className="flex items-center gap-1.5 text-[11px] text-muted">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: LANES[id].color }} />
+                {LANES[id].label}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="flex rounded-lg border border-hairline p-1">
+              <button
+                onClick={() => setMode('directo')}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${mode === 'directo' ? 'bg-bright text-ink' : 'text-muted hover:text-bright'}`}
+              >
+                Recorrido directo
+              </button>
+              <button
+                onClick={() => setMode('inversa')}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${mode === 'inversa' ? 'text-ink' : 'text-muted hover:text-bright'}`}
+                style={mode === 'inversa' ? { backgroundColor: LANES.inversa.color } : {}}
+              >
+                Logística inversa
+              </button>
+            </div>
+
+            <button
+              onClick={playFlow}
+              disabled={playing || showReverseEmptyState}
+              className="flex items-center gap-2 rounded-lg border border-entrada/60 bg-entrada/10 px-3 py-1.5 text-xs font-medium text-entrada transition-colors hover:bg-entrada/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {playing ? 'Reproduciendo…' : '▶ Reproducir flujo'}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]">
+          <div>
+            {showReverseEmptyState ? (
+              <div className="rounded-xl border border-dashed border-inversa/40 bg-inversa/5 p-8 text-center">
+                <p className="text-sm text-bright">
+                  {product.name} no registra devoluciones en este ejemplo.
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  Elegí <span className="text-bright">Yogurt Natural</span> o <span className="text-bright">Queso Paraguay</span> para ver un caso de logística inversa.
+                </p>
+              </div>
+            ) : (
+              <div ref={listRef} className="relative">
+                <div className="rail-line absolute left-[25px] top-3 bottom-3 w-px sm:left-[29px]" />
+                <div ref={dotRef} className="absolute left-[25px] sm:left-[29px] -translate-x-1/2 h-3.5 w-3.5 rounded-full opacity-0"
+                     style={{
+                       backgroundColor: LANES[mode === 'directo' ? 'salida' : 'inversa'].color,
+                       boxShadow: `0 0 12px 3px ${LANES[mode === 'directo' ? 'salida' : 'inversa'].color}99`,
+                     }} />
+                <div className="flex flex-col gap-4">
+                  {nodes.map((node, i) => {
+                    const prevLane = i > 0 ? nodes[i - 1].lane : null;
+                    return (
+                      <React.Fragment key={node.id}>
+                        {node.lane !== prevLane && (
+                          <div className="pl-14 sm:pl-16">
+                            <p className="text-[11px] font-medium uppercase tracking-wide" style={{ color: LANES[node.lane].color }}>
+                              {LANES[node.lane].label}
+                            </p>
+                            <p className="text-[12px] text-muted">{LANES[node.lane].sub}</p>
+                          </div>
+                        )}
+                        <NodeCard
+                          node={node}
+                          product={product}
+                          isActive={activeId === node.id}
+                          isDimmed={activeId !== null && activeId !== node.id}
+                          onClick={handleNodeClick}
+                          cardRef={el => { cardRefs.current[node.id] = el; }}
+                          index={i}
+                        />
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-10 rounded-xl border border-hairline/70 bg-panel/60 p-5">
+              <p className="font-display text-sm font-semibold text-bright">Trazabilidad completa</p>
+              <p className="mt-1 text-xs text-muted">Consulta de extremo a extremo, en ambos sentidos.</p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-entrada">Hacia adelante</p>
+                  <p className="code-chip mt-1 text-[12px] leading-relaxed text-muted">
+                    Tambero → Acopiador → Lote de leche → Producción → Lote de producto → Depósito → Centro de Distribución → Distribuidor → Punto de Venta → Consumidor
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide" style={{ color: LANES.inversa.color }}>Hacia atrás</p>
+                  <p className="code-chip mt-1 text-[12px] leading-relaxed text-muted">
+                    Consumidor → Punto de Venta → Distribuidor → Centro de Distribución → Lote de producto → Orden de Producción → Lote de materia prima → Acopiador → Tambero
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside className="lg:sticky lg:top-8 lg:self-start">
+            <DetailPanel node={activeNode} product={product} />
+          </aside>
+        </div>
+      </main>
+
+      <footer className="border-t border-hairline/70 py-6 text-center text-xs text-muted">
+        Organización 2 · Caso Lactolanda — prototipo de trazabilidad e inventario para la cadena de valor.
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
